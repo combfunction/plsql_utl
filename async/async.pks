@@ -11,6 +11,12 @@ IS
     PRAGMA SERIALLY_REUSABLE;
     --
     --**************************************************************************
+    --  config
+    --**************************************************************************
+    cf_timeout              NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
+    cf_job_class            VARCHAR2(4000)  := 'DEFAULT_JOB_CLASS';
+    --
+    --**************************************************************************
     --  enum
     --**************************************************************************
     TYPE ed_promise_status  IS RECORD
@@ -33,16 +39,11 @@ IS
         );
     TYPE tp_promises        IS TABLE OF tp_promise INDEX BY PLS_INTEGER;
     --
-    TYPE tp_async_proc      IS RECORD
+    TYPE tp_executor        IS RECORD
         (   eval_code       VARCHAR2(4000)  := '1'
         ,   resolution      VARCHAR2(4000)  := 'BEGIN :promise_status := %s; END;'
         );
-    TYPE tp_async_procs     IS TABLE OF tp_async_proc INDEX BY PLS_INTEGER;
-    --
-    --**************************************************************************
-    --  constant
-    --**************************************************************************
-    cn_timeout              CONSTANT NUMBER := ( 12 * 60 * 60 ); -- hhmiss
+    TYPE tp_executors       IS TABLE OF tp_executor   INDEX BY PLS_INTEGER;
     --
     --**************************************************************************
     --  procedure
@@ -64,8 +65,8 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -75,8 +76,8 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE series
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
         );
     --

@@ -14,15 +14,15 @@ IS
     --  forward declaration
     --**************************************************************************
     FUNCTION promise_new
-        (   io_executor     IN  async.tp_async_proc
+        (   io_executor     IN  async.tp_executor
         )   RETURN  async.tp_promise;
     FUNCTION promise_new
-        (   io_executor     IN  async.tp_async_procs
+        (   io_executor     IN  async.tp_executors
         )   RETURN  async.tp_promises;
     --
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cn_timeout
+        ,   in_time_limit   IN  NUMBER := async.cf_timeout
         ,   on_elapsed_time OUT NUMBER
         ,   on_exit_status  OUT NUMBER
         );
@@ -57,7 +57,7 @@ IS
         --
         --  set promise status
         DBMS_PIPE.PACK_MESSAGE( ln_promise_status );
-        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cn_timeout ) <> 0 THEN
+        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cf_timeout ) <> 0 THEN
             NULL;
             --
         END IF;
@@ -73,8 +73,8 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -88,7 +88,7 @@ IS
         --
     BEGIN
         --  create promise ( i.e. enqueue job )
-        lo_promises := promise_new( io_executor => io_async_procs );
+        lo_promises := promise_new( io_executor => io_executors );
         --
         FOR i IN REVERSE 1 .. lo_promises.COUNT LOOP
             --  pop on promise
@@ -130,8 +130,8 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE series
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -143,9 +143,9 @@ IS
         lo_promise          async.tp_promise;
         --
     BEGIN
-        FOR i IN 1 .. io_async_procs.COUNT LOOP
+        FOR i IN 1 .. io_executors.COUNT LOOP
             --  create promise ( i.e. enqueue job )
-            lo_promise  := promise_new( io_executor => io_async_procs(i) );
+            lo_promise  := promise_new( io_executor => io_executors(i) );
             --
             --  wait for promise
             wait_for
@@ -181,11 +181,11 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     FUNCTION promise_new
-        (   io_executor     IN  async.tp_async_proc
+        (   io_executor     IN  async.tp_executor
         )   RETURN  async.tp_promise
     IS
         lo_promise          async.tp_promise;
-        lv_promise_prefix   VARCHAR2(18);   --  GENERATE_JOB_NAME is require less than 19
+        lv_promise_prefix   VARCHAR2(18);   --  GENERATE_JOB_NAME expect that size is less than 19
         --
     BEGIN
         --  create and enqueue job
@@ -217,7 +217,7 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     FUNCTION promise_new
-        (   io_executor     IN  async.tp_async_procs
+        (   io_executor     IN  async.tp_executors
         )   RETURN  async.tp_promises
     IS
         lo_promises         async.tp_promises;
@@ -243,7 +243,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cn_timeout
+        ,   in_time_limit   IN  NUMBER := async.cf_timeout
         ,   on_elapsed_time OUT NUMBER
         ,   on_exit_status  OUT NUMBER
         )
@@ -305,7 +305,7 @@ IS
             --
         END IF;
         --
-        --  cleanup at any rate
+        --  cleanup at any rate ( eafp style )
         DECLARE
             ex_already_dropped  EXCEPTION;
             PRAGMA EXCEPTION_INIT( ex_already_dropped, -27362 );
