@@ -238,22 +238,32 @@ IS
     IS
         lo_promise          async.tp_promise;
         lv_promise_prefix   VARCHAR2(18);   --  GENERATE_JOB_NAME expect that size is less than 19
+        lo_job_args         JOBARG_ARRAY;
+        lo_job_def          JOB_DEFINITION;
         --
     BEGIN
-        --  create and enqueue job
+        --  set job name
         lv_promise_prefix   := 'Z' || TO_CHAR( SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF2' ) || '#';
         lo_promise.cd       := DBMS_SCHEDULER.GENERATE_JOB_NAME( lv_promise_prefix );
-        DBMS_SCHEDULER.CREATE_JOB
-            (    JOB_NAME               => lo_promise.cd
-            ,    JOB_TYPE               => 'STORED_PROCEDURE'
-            ,    JOB_ACTION             => UPPER( 'async.resolve' )
-            ,    NUMBER_OF_ARGUMENTS    => 3
-            ,    ENABLED                => FALSE
+        --  set job arguments
+        lo_job_args := JOBARG_ARRAY
+            (   JOBARG( ARG_POSITION => 1, ARG_VALUE => lo_promise.cd           )
+            ,   JOBARG( ARG_POSITION => 2, ARG_VALUE => io_executor.eval_code   )
+            ,   JOBARG( ARG_POSITION => 3, ARG_VALUE => io_executor.resolution  )
             );
-        DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE( lo_promise.cd, 1, lo_promise.cd          ); -- iv_promise
-        DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE( lo_promise.cd, 2, io_executor.eval_code  ); -- iv_eval_code
-        DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE( lo_promise.cd, 3, io_executor.resolution ); -- iv_resolution
-        DBMS_SCHEDULER.ENABLE( lo_promise.cd );
+        --  set job definition
+        lo_job_def  := JOB_DEFINITION
+            (   JOB_NAME            => lo_promise.cd
+            ,   JOB_CLASS           => async.cf_job_class
+            ,   JOB_TYPE            => 'STORED_PROCEDURE'
+            ,   JOB_ACTION          => UPPER( 'async.resolve' )
+            ,   ARGUMENTS           => lo_job_args
+            ,   NUMBER_OF_ARGUMENTS => lo_job_args.COUNT
+            ,   MAX_RUNS            => 1
+            ,   ENABLED             => TRUE
+            );
+        --  create and enqueue job
+        DBMS_SCHEDULER.CREATE_JOBS( JOB_DEFINITION_ARRAY( lo_job_def ) );
         --
         RETURN lo_promise;
         --
