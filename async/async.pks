@@ -37,28 +37,17 @@ IS
     TYPE tp_promise         IS RECORD
         (   cd              VARCHAR2(4000)
         );
-    TYPE tp_promises        IS TABLE OF tp_promise INDEX BY PLS_INTEGER;
+    TYPE tp_promises        IS TABLE OF tp_promise  INDEX BY PLS_INTEGER;
     --
     TYPE tp_executor        IS RECORD
         (   eval_code       VARCHAR2(4000)  := '1'
         ,   resolution      VARCHAR2(4000)  := 'BEGIN :promise_status := %s; END;'
         );
-    TYPE tp_executors       IS TABLE OF tp_executor   INDEX BY PLS_INTEGER;
+    TYPE tp_executors       IS TABLE OF tp_executor INDEX BY PLS_INTEGER;
     --
     --**************************************************************************
     --  procedure
     --**************************************************************************
-    ----------------------------------------------------------------------------
-    --  NAME        : resolve
-    --  DESCRIPTION : resolve promise i.e. execute proc
-    --  NOTES       : this procedure is called by dbms_scheduler.
-    ----------------------------------------------------------------------------
-    PROCEDURE resolve
-        (   iv_promise      IN  VARCHAR2
-        ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
-        );
-    --
     ----------------------------------------------------------------------------
     --  NAME        : parallel
     --  DESCRIPTION : this procedure do the parallel execution.
@@ -79,6 +68,17 @@ IS
         (   io_executors    IN  async.tp_executors
         ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : resolve
+    --  DESCRIPTION : resolve promise
+    --  NOTES       : this procedure is called by dbms_scheduler.
+    ----------------------------------------------------------------------------
+    PROCEDURE resolve
+        (   iv_promise      IN  VARCHAR2
+        ,   iv_eval_code    IN  VARCHAR2
+        ,   iv_resolution   IN  VARCHAR2
         );
     --
     --==========================================================================

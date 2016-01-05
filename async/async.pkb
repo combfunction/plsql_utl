@@ -13,19 +13,19 @@ IS
     --**************************************************************************
     --  forward declaration
     --**************************************************************************
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executor
-        )   RETURN  async.tp_promise;
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executors
-        )   RETURN  async.tp_promises;
-    --
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
         ,   in_time_limit   IN  NUMBER := async.cf_timeout
         ,   on_elapsed_time OUT NUMBER
         ,   on_exit_status  OUT NUMBER
         );
+    --
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executor
+        )   RETURN  async.tp_promise;
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executors
+        )   RETURN  async.tp_promises;
     --
     PROCEDURE withdraw
         (   io_promise      IN  async.tp_promise
@@ -37,36 +37,6 @@ IS
     --**************************************************************************
     --  public procedure
     --**************************************************************************
-    ----------------------------------------------------------------------------
-    --  NAME        : resolve
-    --  DESCRIPTION : resolve promise i.e. execute proc
-    --  NOTES       : this procedure is called by dbms_scheduler.
-    ----------------------------------------------------------------------------
-    PROCEDURE resolve
-        (   iv_promise      IN  VARCHAR2
-        ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
-        )
-    IS
-        ln_promise_status   NUMBER;
-        --
-    BEGIN
-        --  resolve promise
-        EXECUTE IMMEDIATE UTL_LMS.FORMAT_MESSAGE( iv_resolution, iv_eval_code )
-        USING OUT ln_promise_status;
-        --
-        --  set promise status
-        DBMS_PIPE.PACK_MESSAGE( ln_promise_status );
-        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cf_timeout ) <> 0 THEN
-            NULL;
-            --
-        END IF;
-        --
-    EXCEPTION
-        WHEN OTHERS THEN
-            NULL;
-    END;
-    --
     ----------------------------------------------------------------------------
     --  NAME        : parallel_
     --  DESCRIPTION : this procedure do the parallel execution.
@@ -172,9 +142,91 @@ IS
             on_exit_status := en_exit_status.failure;
     END;
     --
+    ----------------------------------------------------------------------------
+    --  NAME        : resolve
+    --  DESCRIPTION : resolve promise i.e. execute proc
+    --  NOTES       : this procedure is called by dbms_scheduler.
+    ----------------------------------------------------------------------------
+    PROCEDURE resolve
+        (   iv_promise      IN  VARCHAR2
+        ,   iv_eval_code    IN  VARCHAR2
+        ,   iv_resolution   IN  VARCHAR2
+        )
+    IS
+        ln_promise_status   NUMBER;
+        --
+    BEGIN
+        --  resolve promise
+        EXECUTE IMMEDIATE UTL_LMS.FORMAT_MESSAGE( iv_resolution, iv_eval_code )
+        USING OUT ln_promise_status;
+        --
+        --  set promise status
+        DBMS_PIPE.PACK_MESSAGE( ln_promise_status );
+        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cf_timeout ) <> 0 THEN
+            NULL;
+            --
+        END IF;
+        --
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END;
+    --
     --**************************************************************************
     --  private procedure
     --**************************************************************************
+    ----------------------------------------------------------------------------
+    --  NAME        : wait_for
+    --  DESCRIPTION : wait for resolution of promise
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE wait_for
+        (   io_promise      IN  async.tp_promise
+        ,   in_time_limit   IN  NUMBER := async.cf_timeout
+        ,   on_elapsed_time OUT NUMBER
+        ,   on_exit_status  OUT NUMBER
+        )
+    IS
+        en_promise_status   async.ed_promise_status;
+        en_exit_status      async.ed_exit_status;
+        --
+        ln_promise_status   NUMBER  := NULL;
+        ln_receive_status   NUMBER;
+        ln_start_time       NUMBER;
+        ln_end_time         NUMBER;
+        ln_time_limit       NUMBER  := GREATEST( CEIL( in_time_limit ), 0 );
+        --
+    BEGIN
+        --  wait and counting
+        ln_start_time       := DBMS_UTILITY.GET_TIME;
+        ln_receive_status   := DBMS_PIPE.RECEIVE_MESSAGE( io_promise.cd, ln_time_limit );
+        ln_end_time         := DBMS_UTILITY.GET_TIME;
+        --
+        IF ln_receive_status = 0 THEN
+            --  get promise status ( fulfilled or rejected )
+            DBMS_PIPE.UNPACK_MESSAGE( ln_promise_status );
+            DBMS_PIPE.PURGE( io_promise.cd );
+            --
+        ELSE
+            --  cleanup for timeout or interrupte
+            withdraw( io_promise => io_promise );
+            --
+        END IF;
+        --
+        --  counting elapsed time
+        on_elapsed_time := ( ln_end_time - ln_start_time ) / 100;
+        on_exit_status  :=
+            CASE ln_promise_status
+            WHEN en_promise_status.fulfilled THEN en_exit_status.success
+            WHEN en_promise_status.rejected  THEN en_exit_status.failure
+            ELSE                                  en_exit_status.timeout
+            END;
+        --
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE;
+    END;
+    --
     ----------------------------------------------------------------------------
     --  NAME        : promise_new
     --  DESCRIPTION : create and enqueue job
@@ -233,58 +285,6 @@ IS
     EXCEPTION
         WHEN OTHERS THEN
             withdraw( io_promise => lo_promises );
-            RAISE;
-    END;
-    --
-    ----------------------------------------------------------------------------
-    --  NAME        : wait_for
-    --  DESCRIPTION : wait for resolution of promise
-    --  NOTES       :
-    ----------------------------------------------------------------------------
-    PROCEDURE wait_for
-        (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cf_timeout
-        ,   on_elapsed_time OUT NUMBER
-        ,   on_exit_status  OUT NUMBER
-        )
-    IS
-        en_promise_status   async.ed_promise_status;
-        en_exit_status      async.ed_exit_status;
-        --
-        ln_promise_status   NUMBER  := NULL;
-        ln_receive_status   NUMBER;
-        ln_start_time       NUMBER;
-        ln_end_time         NUMBER;
-        ln_time_limit       NUMBER  := GREATEST( CEIL( in_time_limit ), 0 );
-        --
-    BEGIN
-        --  wait and counting
-        ln_start_time       := DBMS_UTILITY.GET_TIME;
-        ln_receive_status   := DBMS_PIPE.RECEIVE_MESSAGE( io_promise.cd, ln_time_limit );
-        ln_end_time         := DBMS_UTILITY.GET_TIME;
-        --
-        IF ln_receive_status = 0 THEN
-            --  get promise status ( fulfilled or rejected )
-            DBMS_PIPE.UNPACK_MESSAGE( ln_promise_status );
-            DBMS_PIPE.PURGE( io_promise.cd );
-            --
-        ELSE
-            --  cleanup for timeout or interrupte
-            withdraw( io_promise => io_promise );
-            --
-        END IF;
-        --
-        --  counting elapsed time
-        on_elapsed_time := ( ln_end_time - ln_start_time ) / 100;
-        on_exit_status  :=
-            CASE ln_promise_status
-            WHEN en_promise_status.fulfilled THEN en_exit_status.success
-            WHEN en_promise_status.rejected  THEN en_exit_status.failure
-            ELSE                                  en_exit_status.timeout
-            END;
-        --
-    EXCEPTION
-        WHEN OTHERS THEN
             RAISE;
     END;
     --
