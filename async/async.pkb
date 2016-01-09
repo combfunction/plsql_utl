@@ -16,7 +16,6 @@ IS
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
         ,   in_time_limit   IN  NUMBER := async.cf_timeout
-        ,   on_elapsed_time OUT NUMBER
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -51,8 +50,9 @@ IS
         en_exit_status      async.ed_exit_status;
         --
         ln_exit_status      NUMBER := en_exit_status.success;
+        ln_start_time       NUMBER;
+        ln_end_time         NUMBER;
         ln_elapsed_time     NUMBER := 0;
-        ln_elapsed_time_ttl NUMBER := 0;
         lo_promises         async.tp_promises;
         lo_promise          async.tp_promise ;
         --
@@ -66,24 +66,28 @@ IS
             lo_promises.DELETE(i);
             --
             --  wait for promise
+            ln_start_time   := DBMS_UTILITY.GET_TIME;
+            --
             wait_for
                 (   io_promise      => lo_promise
-                ,   in_time_limit   => in_time_limit - ln_elapsed_time_ttl
-                ,   on_elapsed_time => ln_elapsed_time
+                ,   in_time_limit   => in_time_limit - ln_elapsed_time
                 ,   on_exit_status  => ln_exit_status
                 );
-            IF ln_exit_status <> en_exit_status.success THEN
-                --  cleanup rest of promise
-                withdraw( io_promise => lo_promises );
-                EXIT;
-                --
-            END IF;
+            EXIT WHEN ln_exit_status <> en_exit_status.success;
+            --
+            ln_end_time     := DBMS_UTILITY.GET_TIME;
             --
             --  counting elapsed time
-            ln_elapsed_time_ttl :=
-            ln_elapsed_time_ttl  + ln_elapsed_time;
+            ln_elapsed_time :=
+            ln_elapsed_time  + ( ln_end_time - ln_start_time ) / 100;
             --
         END LOOP;
+        --
+        --  cleanup rest of promise
+        IF lo_promises.COUNT > 0 THEN
+            withdraw( io_promise => lo_promises );
+            --
+        END IF;
         --
         on_exit_status  := ln_exit_status;
         --
@@ -108,8 +112,9 @@ IS
         en_exit_status      async.ed_exit_status;
         --
         ln_exit_status      NUMBER := en_exit_status.success;
+        ln_start_time       NUMBER;
+        ln_end_time         NUMBER;
         ln_elapsed_time     NUMBER := 0;
-        ln_elapsed_time_ttl NUMBER := 0;
         lo_promise          async.tp_promise;
         --
     BEGIN
@@ -118,20 +123,20 @@ IS
             lo_promise  := promise_new( io_executor => io_executors(i) );
             --
             --  wait for promise
+            ln_start_time   := DBMS_UTILITY.GET_TIME;
+            --
             wait_for
                 (   io_promise      => lo_promise
-                ,   in_time_limit   => in_time_limit - ln_elapsed_time_ttl
-                ,   on_elapsed_time => ln_elapsed_time
+                ,   in_time_limit   => in_time_limit - ln_elapsed_time
                 ,   on_exit_status  => ln_exit_status
                 );
-            IF ln_exit_status <> en_exit_status.success THEN
-                EXIT;
-                --
-            END IF;
+            EXIT WHEN ln_exit_status <> en_exit_status.success;
+            --
+            ln_end_time     := DBMS_UTILITY.GET_TIME;
             --
             --  counting elapsed time
-            ln_elapsed_time_ttl :=
-            ln_elapsed_time_ttl  + ln_elapsed_time;
+            ln_elapsed_time :=
+            ln_elapsed_time  + ( ln_end_time - ln_start_time ) / 100;
             --
         END LOOP;
         --
@@ -183,7 +188,6 @@ IS
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
         ,   in_time_limit   IN  NUMBER := async.cf_timeout
-        ,   on_elapsed_time OUT NUMBER
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -191,18 +195,11 @@ IS
         en_exit_status      async.ed_exit_status;
         --
         ln_promise_status   NUMBER  := NULL;
-        ln_receive_status   NUMBER;
-        ln_start_time       NUMBER;
-        ln_end_time         NUMBER;
         ln_time_limit       NUMBER  := GREATEST( CEIL( in_time_limit ), 0 );
         --
     BEGIN
-        --  wait and counting
-        ln_start_time       := DBMS_UTILITY.GET_TIME;
-        ln_receive_status   := DBMS_PIPE.RECEIVE_MESSAGE( io_promise.cd, ln_time_limit );
-        ln_end_time         := DBMS_UTILITY.GET_TIME;
-        --
-        IF ln_receive_status = 0 THEN
+        --  wait for promise
+        IF DBMS_PIPE.RECEIVE_MESSAGE( io_promise.cd, ln_time_limit ) = 0 THEN
             --  get promise status ( fulfilled or rejected )
             DBMS_PIPE.UNPACK_MESSAGE( ln_promise_status );
             DBMS_PIPE.PURGE( io_promise.cd );
@@ -213,8 +210,6 @@ IS
             --
         END IF;
         --
-        --  counting elapsed time
-        on_elapsed_time := ( ln_end_time - ln_start_time ) / 100;
         on_exit_status  :=
             CASE ln_promise_status
             WHEN en_promise_status.fulfilled THEN en_exit_status.success

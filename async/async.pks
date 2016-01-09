@@ -37,13 +37,13 @@ IS
     TYPE tp_promise         IS RECORD
         (   cd              VARCHAR2(4000)
         );
-    TYPE tp_promises        IS TABLE OF tp_promise  INDEX BY PLS_INTEGER;
+    TYPE tp_promises        IS TABLE OF tp_promise  INDEX BY SIMPLE_INTEGER;
     --
     TYPE tp_executor        IS RECORD
         (   eval_code       VARCHAR2(4000)  := '1'
         ,   resolution      VARCHAR2(4000)  := 'BEGIN :promise_status := %s; END;'
         );
-    TYPE tp_executors       IS TABLE OF tp_executor INDEX BY PLS_INTEGER;
+    TYPE tp_executors       IS TABLE OF tp_executor INDEX BY SIMPLE_INTEGER;
     --
     --**************************************************************************
     --  procedure
