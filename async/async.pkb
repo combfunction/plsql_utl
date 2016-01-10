@@ -11,6 +11,12 @@ IS
     PRAGMA SERIALLY_REUSABLE;
     --
     --**************************************************************************
+    --  enum
+    --**************************************************************************
+    en_exit_status          async.ed_exit_status;
+    en_promise_status       async.ed_promise_status;
+    --
+    --**************************************************************************
     --  forward declaration
     --**************************************************************************
     PROCEDURE wait_for
@@ -47,8 +53,6 @@ IS
         ,   on_exit_status  OUT NUMBER
         )
     IS
-        en_exit_status      async.ed_exit_status;
-        --
         ln_exit_status      NUMBER := en_exit_status.success;
         ln_start_time       NUMBER;
         ln_end_time         NUMBER;
@@ -109,8 +113,6 @@ IS
         ,   on_exit_status  OUT NUMBER
         )
     IS
-        en_exit_status      async.ed_exit_status;
-        --
         ln_exit_status      NUMBER := en_exit_status.success;
         ln_start_time       NUMBER;
         ln_end_time         NUMBER;
@@ -191,9 +193,6 @@ IS
         ,   on_exit_status  OUT NUMBER
         )
     IS
-        en_promise_status   async.ed_promise_status;
-        en_exit_status      async.ed_exit_status;
-        --
         ln_promise_status   NUMBER  := NULL;
         ln_time_limit       NUMBER  := GREATEST( CEIL( in_time_limit ), 0 );
         --

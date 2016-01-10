@@ -14,7 +14,7 @@ IS
     --  config
     --**************************************************************************
     cf_timeout              NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
-    cf_job_class            VARCHAR2(4000)  := 'DEFAULT_JOB_CLASS';
+    cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
     --
     --**************************************************************************
     --  enum
@@ -35,13 +35,13 @@ IS
     --  type
     --**************************************************************************
     TYPE tp_promise         IS RECORD
-        (   cd              VARCHAR2(4000)
+        (   cd              VARCHAR2(30)    --  job name and pipe name
         );
     TYPE tp_promises        IS TABLE OF tp_promise  INDEX BY SIMPLE_INTEGER;
     --
     TYPE tp_executor        IS RECORD
-        (   eval_code       VARCHAR2(4000)  := '1'
-        ,   resolution      VARCHAR2(4000)  := 'BEGIN :promise_status := %s; END;'
+        (   eval_code       VARCHAR2(32767) := '1'
+        ,   resolution      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
         );
     TYPE tp_executors       IS TABLE OF tp_executor INDEX BY SIMPLE_INTEGER;
     --
