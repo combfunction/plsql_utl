@@ -11,6 +11,12 @@ IS
     PRAGMA SERIALLY_REUSABLE;
     --
     --**************************************************************************
+    --  config
+    --**************************************************************************
+    cf_timeout              NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
+    cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
+    --
+    --**************************************************************************
     --  enum
     --**************************************************************************
     TYPE ed_promise_status  IS RECORD
@@ -29,43 +35,27 @@ IS
     --  type
     --**************************************************************************
     TYPE tp_promise         IS RECORD
-        (   cd              VARCHAR2(4000)
+        (   cd              VARCHAR2(30)    --  job name and pipe name
         );
-    TYPE tp_promises        IS TABLE OF tp_promise INDEX BY PLS_INTEGER;
+    TYPE tp_promises        IS TABLE OF tp_promise  INDEX BY SIMPLE_INTEGER;
     --
-    TYPE tp_async_proc      IS RECORD
-        (   eval_code       VARCHAR2(4000)  := '1'
-        ,   resolution      VARCHAR2(4000)  := 'BEGIN :promise_status := %s; END;'
+    TYPE tp_executor        IS RECORD
+        (   eval_code       VARCHAR2(32767) := '1'
+        ,   resolution      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
         );
-    TYPE tp_async_procs     IS TABLE OF tp_async_proc INDEX BY PLS_INTEGER;
-    --
-    --**************************************************************************
-    --  constant
-    --**************************************************************************
-    cn_timeout              CONSTANT NUMBER := ( 12 * 60 * 60 ); -- hhmiss
+    TYPE tp_executors       IS TABLE OF tp_executor INDEX BY SIMPLE_INTEGER;
     --
     --**************************************************************************
     --  procedure
     --**************************************************************************
-    ----------------------------------------------------------------------------
-    --  NAME        : resolve
-    --  DESCRIPTION : resolve promise i.e. execute proc
-    --  NOTES       : this procedure is called by dbms_scheduler.
-    ----------------------------------------------------------------------------
-    PROCEDURE resolve
-        (   iv_promise      IN  VARCHAR2
-        ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
-        );
-    --
     ----------------------------------------------------------------------------
     --  NAME        : parallel
     --  DESCRIPTION : this procedure do the parallel execution.
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -75,9 +65,20 @@ IS
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE series
-        (   io_async_procs  IN  async.tp_async_procs
-        ,   in_time_limit   IN  NUMBER  := async.cn_timeout
+        (   io_executors    IN  async.tp_executors
+        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
         ,   on_exit_status  OUT NUMBER
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : resolve
+    --  DESCRIPTION : resolve promise
+    --  NOTES       : this procedure is called by dbms_scheduler.
+    ----------------------------------------------------------------------------
+    PROCEDURE resolve
+        (   iv_promise      IN  VARCHAR2
+        ,   iv_eval_code    IN  VARCHAR2
+        ,   iv_resolution   IN  VARCHAR2
         );
     --
     --==========================================================================
