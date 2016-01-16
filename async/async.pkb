@@ -17,24 +17,12 @@ IS
     en_promise_status       async.ed_promise_status;
     --
     --**************************************************************************
-    --  forward declaration
+    --  private declaration
     --**************************************************************************
-    PROCEDURE wait_for
-        (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cf_time_limit
-        ,   on_exit_status  OUT NUMBER
-        );
-    --
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executor
-        )   RETURN  async.tp_promise;
     FUNCTION promise_new
         (   io_executor     IN  async.tp_executors
         )   RETURN  async.tp_promises;
     --
-    PROCEDURE withdraw
-        (   io_promise      IN  async.tp_promise
-        );
     PROCEDURE withdraw
         (   io_promise      IN  async.tp_promises
         );
@@ -42,6 +30,27 @@ IS
     --**************************************************************************
     --  public procedure
     --**************************************************************************
+    ----------------------------------------------------------------------------
+    --  NAME        : config
+    --  DESCRIPTION : setter
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE config
+        (   in_time_limit   IN  async.cf_time_limit%TYPE    := async.cf_time_limit
+        ,   iv_job_class    IN  async.cf_job_class%TYPE     := async.cf_job_class
+        ,   iv_job_prefix   IN  async.cf_job_prefix%TYPE    := async.cf_job_prefix
+        )
+    IS
+    BEGIN
+        async.cf_time_limit := in_time_limit    ;
+        async.cf_job_class  := iv_job_class     ;
+        async.cf_job_prefix := iv_job_prefix    ;
+        --
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE;
+    END;
+    --
     ----------------------------------------------------------------------------
     --  NAME        : parallel_
     --  DESCRIPTION : this procedure do the parallel execution.
@@ -179,9 +188,6 @@ IS
             NULL;
     END;
     --
-    --**************************************************************************
-    --  private procedure
-    --**************************************************************************
     ----------------------------------------------------------------------------
     --  NAME        : wait_for
     --  DESCRIPTION : wait for resolution of promise
@@ -218,7 +224,7 @@ IS
         --
     EXCEPTION
         WHEN OTHERS THEN
-            RAISE;
+            on_exit_status := en_exit_status.failure;
     END;
     --
     ----------------------------------------------------------------------------
@@ -266,31 +272,6 @@ IS
     END;
     --
     ----------------------------------------------------------------------------
-    --  NAME        : promise_new
-    --  DESCRIPTION : simple wrapper
-    --  NOTES       :
-    ----------------------------------------------------------------------------
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executors
-        )   RETURN  async.tp_promises
-    IS
-        lo_promises         async.tp_promises;
-        --
-    BEGIN
-        FOR i IN 1 .. io_executor.COUNT LOOP
-            lo_promises(i)  := promise_new( io_executor => io_executor(i) );
-            --
-        END LOOP;
-        --
-        RETURN lo_promises;
-        --
-    EXCEPTION
-        WHEN OTHERS THEN
-            withdraw( io_promise => lo_promises );
-            RAISE;
-    END;
-    --
-    ----------------------------------------------------------------------------
     --  NAME        : withdraw
     --  DESCRIPTION : cleanup, dequeue job if possibele
     --  NOTES       :
@@ -326,6 +307,34 @@ IS
         --
     EXCEPTION
         WHEN OTHERS THEN
+            RAISE;
+    END;
+    --
+    --**************************************************************************
+    --  private procedure
+    --**************************************************************************
+    ----------------------------------------------------------------------------
+    --  NAME        : promise_new
+    --  DESCRIPTION : simple wrapper
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executors
+        )   RETURN  async.tp_promises
+    IS
+        lo_promises         async.tp_promises;
+        --
+    BEGIN
+        FOR i IN 1 .. io_executor.COUNT LOOP
+            lo_promises(i)  := promise_new( io_executor => io_executor(i) );
+            --
+        END LOOP;
+        --
+        RETURN lo_promises;
+        --
+    EXCEPTION
+        WHEN OTHERS THEN
+            withdraw( io_promise => lo_promises );
             RAISE;
     END;
     --

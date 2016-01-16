@@ -50,6 +50,17 @@ IS
     --  procedure
     --**************************************************************************
     ----------------------------------------------------------------------------
+    --  NAME        : config
+    --  DESCRIPTION : setter
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE config
+        (   in_time_limit   IN  async.cf_time_limit%TYPE    := async.cf_time_limit
+        ,   iv_job_class    IN  async.cf_job_class%TYPE     := async.cf_job_class
+        ,   iv_job_prefix   IN  async.cf_job_prefix%TYPE    := async.cf_job_prefix
+        );
+    --
+    ----------------------------------------------------------------------------
     --  NAME        : parallel
     --  DESCRIPTION : this procedure do the parallel execution.
     --  NOTES       :
@@ -80,6 +91,35 @@ IS
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
         ,   iv_resolution   IN  VARCHAR2
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : wait_for
+    --  DESCRIPTION : wait for resolution of promise
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE wait_for
+        (   io_promise      IN  async.tp_promise
+        ,   in_time_limit   IN  NUMBER := async.cf_time_limit
+        ,   on_exit_status  OUT NUMBER
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : promise_new
+    --  DESCRIPTION : create and enqueue job
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executor
+        )   RETURN  async.tp_promise;
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : withdraw
+    --  DESCRIPTION : cleanup, dequeue job if possibele
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE withdraw
+        (   io_promise      IN  async.tp_promise
         );
     --
     --==========================================================================
