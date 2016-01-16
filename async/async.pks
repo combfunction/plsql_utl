@@ -13,8 +13,9 @@ IS
     --**************************************************************************
     --  config
     --**************************************************************************
-    cf_timeout              NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
+    cf_time_limit           NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
     cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
+    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#'; -- GENERATE_JOB_NAME expect that size is less than 19
     --
     --**************************************************************************
     --  enum
@@ -55,7 +56,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -66,7 +67,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE series
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -82,7 +83,7 @@ IS
         );
     --
     --==========================================================================
-    --               Copyright (C) 2015 ken16 All Rights Reserved.
+    --               Copyright (C) 2016 ken16 All Rights Reserved.
     --==========================================================================
 END;
 /

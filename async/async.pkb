@@ -21,7 +21,7 @@ IS
     --**************************************************************************
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -49,7 +49,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -109,7 +109,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE series
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -169,7 +169,7 @@ IS
         --
         --  set promise status
         DBMS_PIPE.PACK_MESSAGE( ln_promise_status );
-        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cf_timeout ) <> 0 THEN
+        IF DBMS_PIPE.SEND_MESSAGE( iv_promise, async.cf_time_limit ) <> 0 THEN
             NULL;
             --
         END IF;
@@ -189,7 +189,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE wait_for
         (   io_promise      IN  async.tp_promise
-        ,   in_time_limit   IN  NUMBER := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         )
     IS
@@ -231,14 +231,12 @@ IS
         )   RETURN  async.tp_promise
     IS
         lo_promise          async.tp_promise;
-        lv_promise_prefix   VARCHAR2(18);   --  GENERATE_JOB_NAME expect that size is less than 19
         lo_job_args         JOBARG_ARRAY;
         lo_job_def          JOB_DEFINITION;
         --
     BEGIN
         --  set job name
-        lv_promise_prefix   := 'Z' || TO_CHAR( SYSTIMESTAMP, 'YYYYMMDDHH24MISSFF2' ) || '#';
-        lo_promise.cd       := DBMS_SCHEDULER.GENERATE_JOB_NAME( lv_promise_prefix );
+        lo_promise.cd       := DBMS_SCHEDULER.GENERATE_JOB_NAME( async.cf_job_prefix );
         --  set job arguments
         lo_job_args := JOBARG_ARRAY
             (   JOBARG( ARG_POSITION => 1, ARG_VALUE => lo_promise.cd           )
@@ -352,7 +350,7 @@ IS
     END;
     --
     --==========================================================================
-    --               Copyright (C) 2015 ken16 All Rights Reserved.
+    --               Copyright (C) 2016 ken16 All Rights Reserved.
     --==========================================================================
 END;
 /
