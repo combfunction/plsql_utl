@@ -13,8 +13,17 @@ IS
     --**************************************************************************
     --  config
     --**************************************************************************
-    cf_timeout              NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
+    cf_time_limit           NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
     cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
+    --
+    -- cf. DBMS_SCHEDULER.GENERATE_JOB_NAME
+    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#';
+    --
+    --  sort of %s
+    --  1. iv_eval_block
+    --  2. iv_eval_code
+    --  3. SQLERRM
+    cf_on_error             VARCHAR2(32767) := 'BEGIN NULL; END;';
     --
     --**************************************************************************
     --  enum
@@ -41,7 +50,7 @@ IS
     --
     TYPE tp_executor        IS RECORD
         (   eval_code       VARCHAR2(32767) := '1'
-        ,   resolution      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
+        ,   eval_block      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
         );
     TYPE tp_executors       IS TABLE OF tp_executor INDEX BY SIMPLE_INTEGER;
     --
@@ -49,13 +58,25 @@ IS
     --  procedure
     --**************************************************************************
     ----------------------------------------------------------------------------
+    --  NAME        : config
+    --  DESCRIPTION : setter
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE config
+        (   in_time_limit   IN  async.cf_time_limit%TYPE    := async.cf_time_limit
+        ,   iv_job_class    IN  async.cf_job_class%TYPE     := async.cf_job_class
+        ,   iv_job_prefix   IN  async.cf_job_prefix%TYPE    := async.cf_job_prefix
+        ,   iv_on_error     IN  async.cf_on_error%TYPE      := async.cf_on_error
+        );
+    --
+    ----------------------------------------------------------------------------
     --  NAME        : parallel
     --  DESCRIPTION : this procedure do the parallel execution.
     --  NOTES       :
     ----------------------------------------------------------------------------
     PROCEDURE parallel_
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -66,7 +87,7 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE series
         (   io_executors    IN  async.tp_executors
-        ,   in_time_limit   IN  NUMBER  := async.cf_timeout
+        ,   in_time_limit   IN  NUMBER  := async.cf_time_limit
         ,   on_exit_status  OUT NUMBER
         );
     --
@@ -78,11 +99,49 @@ IS
     PROCEDURE resolve
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
+        ,   iv_eval_block   IN  VARCHAR2
+        ,   iv_on_error     IN  VARCHAR2
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : wait_for
+    --  DESCRIPTION : wait for resolution of promise
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE wait_for
+        (   io_promise      IN  async.tp_promise
+        ,   in_time_limit   IN  NUMBER := async.cf_time_limit
+        ,   on_exit_status  OUT NUMBER
+        );
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : promise_new
+    --  DESCRIPTION : create and enqueue job
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executor
+        )   RETURN  async.tp_promise;
+    --
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executors
+        )   RETURN  async.tp_promises;
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : withdraw
+    --  DESCRIPTION : cleanup, dequeue job if possibele
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    PROCEDURE withdraw
+        (   io_promise      IN  async.tp_promise
+        );
+    --
+    PROCEDURE withdraw
+        (   io_promise      IN  async.tp_promises
         );
     --
     --==========================================================================
-    --               Copyright (C) 2015 ken16 All Rights Reserved.
+    --               Copyright (C) 2016 ken16 All Rights Reserved.
     --==========================================================================
 END;
 /
