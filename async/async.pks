@@ -15,7 +15,15 @@ IS
     --**************************************************************************
     cf_time_limit           NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
     cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
-    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#'; -- cf. DBMS_SCHEDULER.GENERATE_JOB_NAME
+    --
+    -- cf. DBMS_SCHEDULER.GENERATE_JOB_NAME
+    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#';
+    --
+    --  sort of %s
+    --  1. iv_eval_block
+    --  2. iv_eval_code
+    --  3. SQLERRM
+    cf_on_error             VARCHAR2(32767) := 'BEGIN NULL; END;';
     --
     --**************************************************************************
     --  enum
@@ -58,6 +66,7 @@ IS
         (   in_time_limit   IN  async.cf_time_limit%TYPE    := async.cf_time_limit
         ,   iv_job_class    IN  async.cf_job_class%TYPE     := async.cf_job_class
         ,   iv_job_prefix   IN  async.cf_job_prefix%TYPE    := async.cf_job_prefix
+        ,   iv_on_error     IN  async.cf_on_error%TYPE      := async.cf_on_error
         );
     --
     ----------------------------------------------------------------------------
@@ -91,6 +100,7 @@ IS
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
         ,   iv_eval_block   IN  VARCHAR2
+        ,   iv_on_error     IN  VARCHAR2
         );
     --
     ----------------------------------------------------------------------------

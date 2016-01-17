@@ -1,6 +1,8 @@
+--drop table "ASYNC_TEST";
 --CREATE TABLE "ASYNC_TEST"
 --    (   "CREATE_AT" VARCHAR2(30)
 --    ,   "VALUE_"    NUMBER
+--    ,   "ON_ERROR"  VARCHAR2(4000) DEFAULT ''
 --    );
 --
 --create or replace function ASYNC_TEST_1
@@ -22,6 +24,21 @@
 --    
 --    RETURN in_status;
 --end;
+--create or replace PROCEDURE ASYNC_TEST_2
+--    (   iv_eval_code    VARCHAR2
+--    ,   iv_eval_block   VARCHAR2
+--    ,   iv_on_error     VARCHAR2
+--    )
+--is
+--    pragma AUTONOMOUS_TRANSACTION;
+--    lv_stamp ASYNC_TEST.CREATE_AT%TYPE;
+--begin
+--    lv_stamp := TO_CHAR( SYSTIMESTAMP, 'YYYY-MM-DD HH24:MI:SS FF3' );
+--    insert into ASYNC_TEST( CREATE_AT, VALUE_, ON_ERROR ) values ( lv_stamp,  -1, iv_on_error );
+--    commit;
+--EXCEPTION
+--    when others then ROLLBACK;
+--end;
 set serveroutput on
 DECLARE
     lo_procs    async.tp_executors;
@@ -29,14 +46,15 @@ DECLARE
     ld_start    TIMESTAMP; 
 BEGIN
     async.config
-        (   in_time_limit  => 11
-        ,   iv_job_prefix  => 'ASYNC_TEST#'
+        (   in_time_limit   => 0
+        ,   iv_job_prefix   => 'ASYNC_TEST#'
+        ,   iv_on_error     => q'|BEGIN ASYNC_TEST_2('%s','%s','%s'); END;|'
         );
     lo_procs( 1).eval_code := q'|ASYNC_TEST_1(0,1, 1)|';
     lo_procs( 2).eval_code := q'|ASYNC_TEST_1(0,1, 2)|';
     lo_procs( 3).eval_code := q'|ASYNC_TEST_1(0,1, 3)|';
     lo_procs( 4).eval_code := q'|ASYNC_TEST_1(0,1, 4)|';
-    lo_procs( 5).eval_code := q'|ASYNC_TEST_1(1,1, 5)|';
+    lo_procs( 5).eval_code := q'|ASYNC_TEST_1(0,1, 5)|';
     lo_procs( 6).eval_code := q'|ASYNC_TEST_1(0,1, 6)|';
     lo_procs( 7).eval_code := q'|ASYNC_TEST_1(0,1, 7)|';
     lo_procs( 8).eval_code := q'|ASYNC_TEST_1(0,1, 8)|';

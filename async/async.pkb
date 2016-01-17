@@ -28,12 +28,14 @@ IS
         (   in_time_limit   IN  async.cf_time_limit%TYPE    := async.cf_time_limit
         ,   iv_job_class    IN  async.cf_job_class%TYPE     := async.cf_job_class
         ,   iv_job_prefix   IN  async.cf_job_prefix%TYPE    := async.cf_job_prefix
+        ,   iv_on_error     IN  async.cf_on_error%TYPE      := async.cf_on_error
         )
     IS
     BEGIN
         async.cf_time_limit := in_time_limit;
         async.cf_job_class  := iv_job_class ;
         async.cf_job_prefix := iv_job_prefix;
+        async.cf_on_error   := iv_on_error;
         --
     EXCEPTION
         WHEN OTHERS THEN
@@ -95,8 +97,6 @@ IS
         --
     EXCEPTION
         WHEN OTHERS THEN
-            --  cleanup rest of promise
-            withdraw( io_promise => lo_promises );
             on_exit_status := en_exit_status.failure;
     END;
     --
@@ -156,6 +156,7 @@ IS
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
         ,   iv_eval_block   IN  VARCHAR2
+        ,   iv_on_error     IN  VARCHAR2
         )
     IS
         ln_promise_status   NUMBER;
@@ -174,7 +175,8 @@ IS
         --
     EXCEPTION
         WHEN OTHERS THEN
-            NULL;
+            --  e.g. debug log ..
+            EXECUTE IMMEDIATE UTL_LMS.FORMAT_MESSAGE( iv_on_error, iv_eval_code, iv_eval_block, SQLERRM );
     END;
     --
     ----------------------------------------------------------------------------
@@ -237,6 +239,7 @@ IS
             (   JOBARG( ARG_POSITION => 1, ARG_VALUE => lo_promise.cd           )
             ,   JOBARG( ARG_POSITION => 2, ARG_VALUE => io_executor.eval_code   )
             ,   JOBARG( ARG_POSITION => 3, ARG_VALUE => io_executor.eval_block  )
+            ,   JOBARG( ARG_POSITION => 4, ARG_VALUE => async.cf_on_error       )
             );
         --  set job definition
         lo_job_def  := JOB_DEFINITION
@@ -305,7 +308,9 @@ IS
         --  cleanup at any rate ( eafp style )
         DECLARE
             ex_already_dropped  EXCEPTION;
+            ex_not_exist        EXCEPTION;
             PRAGMA EXCEPTION_INIT( ex_already_dropped, -27362 );
+            PRAGMA EXCEPTION_INIT( ex_not_exist      , -00942 );
             --
         BEGIN
             DBMS_SCHEDULER.DROP_JOB
@@ -315,7 +320,7 @@ IS
                 );
             --
         EXCEPTION
-            WHEN ex_already_dropped THEN
+            WHEN ex_already_dropped OR ex_not_exist THEN
                 NULL;   --  maybe auto_drop and drop_job collnme
         END;
         --
