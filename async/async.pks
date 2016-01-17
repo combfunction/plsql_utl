@@ -42,7 +42,7 @@ IS
     --
     TYPE tp_executor        IS RECORD
         (   eval_code       VARCHAR2(32767) := '1'
-        ,   resolution      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
+        ,   eval_block      VARCHAR2(32767) := 'BEGIN :promise_status := %s; END;'
         );
     TYPE tp_executors       IS TABLE OF tp_executor INDEX BY SIMPLE_INTEGER;
     --
@@ -90,7 +90,7 @@ IS
     PROCEDURE resolve
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
+        ,   iv_eval_block   IN  VARCHAR2
         );
     --
     ----------------------------------------------------------------------------

@@ -155,14 +155,14 @@ IS
     PROCEDURE resolve
         (   iv_promise      IN  VARCHAR2
         ,   iv_eval_code    IN  VARCHAR2
-        ,   iv_resolution   IN  VARCHAR2
+        ,   iv_eval_block   IN  VARCHAR2
         )
     IS
         ln_promise_status   NUMBER;
         --
     BEGIN
         --  resolve promise
-        EXECUTE IMMEDIATE UTL_LMS.FORMAT_MESSAGE( iv_resolution, iv_eval_code )
+        EXECUTE IMMEDIATE UTL_LMS.FORMAT_MESSAGE( iv_eval_block, iv_eval_code )
         USING OUT ln_promise_status;
         --
         --  set promise status
@@ -236,7 +236,7 @@ IS
         lo_job_args := JOBARG_ARRAY
             (   JOBARG( ARG_POSITION => 1, ARG_VALUE => lo_promise.cd           )
             ,   JOBARG( ARG_POSITION => 2, ARG_VALUE => io_executor.eval_code   )
-            ,   JOBARG( ARG_POSITION => 3, ARG_VALUE => io_executor.resolution  )
+            ,   JOBARG( ARG_POSITION => 3, ARG_VALUE => io_executor.eval_block  )
             );
         --  set job definition
         lo_job_def  := JOB_DEFINITION
