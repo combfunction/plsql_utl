@@ -15,7 +15,7 @@ IS
     --**************************************************************************
     cf_time_limit           NUMBER          := ( 12 * 60 * 60 )   ; -- hhmiss
     cf_job_class            VARCHAR2(30)    := 'DEFAULT_JOB_CLASS';
-    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#'; -- GENERATE_JOB_NAME expect that size is less than 19
+    cf_job_prefix           VARCHAR2(18)    := 'ASYNC#'; -- cf. DBMS_SCHEDULER.GENERATE_JOB_NAME
     --
     --**************************************************************************
     --  enum
@@ -113,6 +113,10 @@ IS
         (   io_executor     IN  async.tp_executor
         )   RETURN  async.tp_promise;
     --
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executors
+        )   RETURN  async.tp_promises;
+    --
     ----------------------------------------------------------------------------
     --  NAME        : withdraw
     --  DESCRIPTION : cleanup, dequeue job if possibele
@@ -120,6 +124,10 @@ IS
     ----------------------------------------------------------------------------
     PROCEDURE withdraw
         (   io_promise      IN  async.tp_promise
+        );
+    --
+    PROCEDURE withdraw
+        (   io_promise      IN  async.tp_promises
         );
     --
     --==========================================================================

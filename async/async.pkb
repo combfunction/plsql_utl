@@ -17,17 +17,6 @@ IS
     en_promise_status       async.ed_promise_status;
     --
     --**************************************************************************
-    --  private declaration
-    --**************************************************************************
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executors
-        )   RETURN  async.tp_promises;
-    --
-    PROCEDURE withdraw
-        (   io_promise      IN  async.tp_promises
-        );
-    --
-    --**************************************************************************
     --  public procedure
     --**************************************************************************
     ----------------------------------------------------------------------------
@@ -42,9 +31,9 @@ IS
         )
     IS
     BEGIN
-        async.cf_time_limit := in_time_limit    ;
-        async.cf_job_class  := iv_job_class     ;
-        async.cf_job_prefix := iv_job_prefix    ;
+        async.cf_time_limit := in_time_limit;
+        async.cf_job_class  := iv_job_class ;
+        async.cf_job_prefix := iv_job_prefix;
         --
     EXCEPTION
         WHEN OTHERS THEN
@@ -242,7 +231,7 @@ IS
         --
     BEGIN
         --  set job name
-        lo_promise.cd       := DBMS_SCHEDULER.GENERATE_JOB_NAME( async.cf_job_prefix );
+        lo_promise.cd   := DBMS_SCHEDULER.GENERATE_JOB_NAME( async.cf_job_prefix );
         --  set job arguments
         lo_job_args := JOBARG_ARRAY
             (   JOBARG( ARG_POSITION => 1, ARG_VALUE => lo_promise.cd           )
@@ -268,6 +257,31 @@ IS
     EXCEPTION
         WHEN OTHERS THEN
             withdraw( io_promise => lo_promise );
+            RAISE;
+    END;
+    --
+    ----------------------------------------------------------------------------
+    --  NAME        : promise_new
+    --  DESCRIPTION : simple wrapper
+    --  NOTES       :
+    ----------------------------------------------------------------------------
+    FUNCTION promise_new
+        (   io_executor     IN  async.tp_executors
+        )   RETURN  async.tp_promises
+    IS
+        lo_promises         async.tp_promises;
+        --
+    BEGIN
+        FOR i IN 1 .. io_executor.COUNT LOOP
+            lo_promises(i)  := promise_new( io_executor => io_executor(i) );
+            --
+        END LOOP;
+        --
+        RETURN lo_promises;
+        --
+    EXCEPTION
+        WHEN OTHERS THEN
+            withdraw( io_promise => lo_promises );
             RAISE;
     END;
     --
@@ -307,34 +321,6 @@ IS
         --
     EXCEPTION
         WHEN OTHERS THEN
-            RAISE;
-    END;
-    --
-    --**************************************************************************
-    --  private procedure
-    --**************************************************************************
-    ----------------------------------------------------------------------------
-    --  NAME        : promise_new
-    --  DESCRIPTION : simple wrapper
-    --  NOTES       :
-    ----------------------------------------------------------------------------
-    FUNCTION promise_new
-        (   io_executor     IN  async.tp_executors
-        )   RETURN  async.tp_promises
-    IS
-        lo_promises         async.tp_promises;
-        --
-    BEGIN
-        FOR i IN 1 .. io_executor.COUNT LOOP
-            lo_promises(i)  := promise_new( io_executor => io_executor(i) );
-            --
-        END LOOP;
-        --
-        RETURN lo_promises;
-        --
-    EXCEPTION
-        WHEN OTHERS THEN
-            withdraw( io_promise => lo_promises );
             RAISE;
     END;
     --
